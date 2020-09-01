@@ -1,0 +1,76 @@
+<h1>Master Puzzle Listing</h1>
+
+<%= link_to 'New puzzle', new_puzzle_path %>
+
+<script type="text/javascript">
+
+  def mctsEval(game) {
+    var terrain = 0;
+    var congest = 0;
+    const k = 200;
+
+    var neighbors = [0, 0, 0, 0];
+    const a = 0;
+    const b = 0;
+    const c = 0;
+
+    for (i = 0; i < game.length; i++) {
+      for (j = 0; j < game[i].length; j++) {
+        if (game[i][j] == 4) {
+          neighbors = [j+1, i+1, j-1, i-1]; // right, up, left, down
+
+          if (neighbors[0] < game[i].length) {
+            if (game[i][neighbors[0]] == 3) {
+              terrain++;
+            }
+          }
+
+          if (neighbors[1] < game.length) {
+            if (game[neighbors[1]][j] == 3) {
+              terrain++;
+            }
+          }
+
+          if (neighbors[2] >= 0) {
+            if (game[i][neighbors[2]] == 3) {
+              terrain++;
+            }
+          }
+
+          if (neighbors[3] >= 0) {
+            if (game[neighbors[3]][j] == 3) {
+              terrain++;
+            }
+          }
+
+        }
+
+        
+
+      }
+    }
+
+    return (Math.sqrt(terrain * congest)) / k;
+  }
+
+</script>
+
+<table>
+  <tr>
+    <th>Name</th>
+    <th>Game</th>
+    <th></th>
+  </tr>
+
+  <% @puzzles.each do |puzzle| %>
+    <tr>
+      <td><%= puzzle.name %></td>
+      <td><%= puzzle.game %></td>
+      <td><%= link_to 'Show', puzzle_path(puzzle) %></td>
+      <td><%= link_to 'Edit', edit_puzzle_path(puzzle) %></td>
+      <td><%= link_to 'Remove', puzzle_path(puzzle),
+              method: :delete,
+              data: { confirm: 'Are you sure?' } %></td>
+    </tr>
+  <% end %>
+</table>

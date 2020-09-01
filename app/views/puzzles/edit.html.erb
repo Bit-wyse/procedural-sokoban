@@ -1,0 +1,8 @@
+<h1>Edit Puzzle</h1>
+
+<%= render 'form' %>
+
+<%= link_to 'Remove puzzle', puzzle_path(@puzzle),
+        method: :delete,
+        data: { confirm: 'Are you sure?' } %> |
+<%= link_to 'Back to listing', puzzles_path %>
