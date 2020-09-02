@@ -35,6 +35,8 @@
   <%= @puzzle.game %>
 </p>
 
+<p><strong>Instructions:</strong> Use the arrow keys to move around and push all of the boulders into their spots.</p>
+
 <br><br>
 
 <div id="gameWindow" class="gameWindow"></div>
@@ -224,6 +226,7 @@
 
     switch (gameState[newY][newX]) {
       case obstacleID:
+        updateGame(gameState);
         break;
       case freeID:
         movePlayer();
@@ -246,6 +249,7 @@
             movePlayer();
           }
         }
+        updateGame(gameState);
         break;
       default:
         break;

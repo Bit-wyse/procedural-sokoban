@@ -4,41 +4,136 @@
 
 <script type="text/javascript">
 
-  function mctsEval(game) {
+  var emptyID = 0;
+  var obstacleID = 9;
+  var boxID = emptyID + 1;
+  var goalID = 3;
+
+  class TNode {
+    constructor(state, parent = null, children = [], q = 0, n = 0,
+        visited = false, exhausted = false, root = false) {
+      this.state = state;
+      this.parent = parent;
+      this.children = children;
+      this.root = root;
+      this.q = q;
+      this.n = n;
+      this.visited = visited;
+      this.exhaused = exhausted;
+    }
+
+    isRoot() {
+      if (typeof(this.parent) === "object") {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  }
+
+  function mctsInit(m, n) {
+    var state = Array.from({ length: n},
+      () => Array.from({length: m}, () => obstacleID));
+    state[Math.trunc(state.length / 2)][Math.trunc(state[0].length / 2)]
+      = emptyID + 2;
+
+    return new TNode(state, root = true);
+  }
+
+  function mctsMain(root) {
+    while (true) {
+
+    }
+  }
+
+  function mctsTrav(node) { // FIX store uct evaluation on node object for speed
+    var nodeCurrent = node
+    while (nodeCurrent.exhausted) {
+      var bestUCT = 0;
+      var nodeNext = null;
+      for (i = 0; i < nodeCurrent.children.length; i++) {
+        var uct = mctsUCT(nodeCurrent.children[i]);
+        if (uct >= bestUCT) {
+          bestUCT = uct;
+          nodeNext = nodeCurrent.children[i];
+        }
+      }
+      nodeCurrent = nodeNext;
+    }
+    if (nodeCurrent.children.length == 0) {
+      return null
+    } else {
+
+    }
+  }
+
+  function mctsBest(node) { // choose best child
+    var best = [null, 0];
+    for (i = 0; i < node.children.length; i++) {
+      maxer = node.children[i].n;
+      if (maxer >= best[1]) {
+        best = [node.children[i], maxer];
+      }
+    }
+
+    return best[0];
+  }
+
+  function mctsRoll(node) { // rollout policy, NOT FULL ROLLOUT
+    roll = Math.random();
+    numCh = node.children.length
+    for (i = 0; i < numCh; i++) {
+      if (roll < (i + 1) / numCh) {
+        return node.children[i];
+      }
+    }
+    return null;
+  }
+
+  function mctsProp(node, result) { // recursively backpropagate to origin node
+    if (node.isRoot()) {
+      return;
+    }
+    node.q += result;
+    node.n += 1;
+    mctsProp(node.parent, result);
+  }
+
+  function mctsEval(node) { // equation 2 from paper
     var terrain = 0;
     var congest = 0;
-    const k = 200;
+    var k = 200;
 
     var neighbors = [0, 0, 0, 0];
-    const a = 0;
-    const b = 0;
-    const c = 0;
+    var a = 0;
+    var b = 0;
+    var c = 0;
 
-    for (i = 0; i < game.length; i++) {
-      for (j = 0; j < game[i].length; j++) {
-        if (game[i][j] == 4) {
+    for (i = 0; i < node.state.length; i++) {
+      for (j = 0; j < node.state[i].length; j++) {
+        if (node.state[i][j] == emptyID || node.state[i][j] == emptyID + 1 || node.state[i][j] == emptyID + 2) {
           neighbors = [j+1, i+1, j-1, i-1]; // right, up, left, down
 
-          if (neighbors[0] < game[i].length) {
-            if (game[i][neighbors[0]] == 3) {
+          if (neighbors[0] < node.state[i].length) {
+            if (node.state[i][neighbors[0]] == obstacleID) {
               terrain++;
             }
           }
 
-          if (neighbors[1] < game.length) {
-            if (game[neighbors[1]][j] == 3) {
+          if (neighbors[1] < node.state.length) {
+            if (node.state[neighbors[1]][j] == obstacleID) {
               terrain++;
             }
           }
 
           if (neighbors[2] >= 0) {
-            if (game[i][neighbors[2]] == 3) {
+            if (node.state[i][neighbors[2]] == obstacleID) {
               terrain++;
             }
           }
 
           if (neighbors[3] >= 0) {
-            if (game[neighbors[3]][j] == 3) {
+            if (node.state[neighbors[3]][j] == obstacleID) {
               terrain++;
             }
           }
@@ -52,6 +147,49 @@
 
     return (Math.sqrt(terrain * congest)) / k;
   }
+
+
+  function mctsUCT(node) { // equation 1 from paper
+    var w;
+    var pi_s;
+    var c = Math.sqrt(2);
+    var p_v;
+    var s_v;
+
+    return w * pi_s + c * Math.sqrt(Math.log(p_v)/s_v);
+  }
+
+  function mctsDist(node) { // handle the congestion term
+    var boxes = [];
+    var goalsUnordered = [];
+    for (i = 0; i < node.state.length; i++) {
+      for (j = 0; j < node.state[i].length; j++) {
+        if (node.state[i][j] == boxID) {
+          boxes.push([i, j]);
+        }
+        if (node.state[i][j] == goalID) {
+          goalsUnordered.push([i, j]);
+        }
+      }
+    }
+
+    var goals = [];
+    for (box = 0; box < boxes.length; box++) {
+      var shortest = [Number.POSITIVE_INFINITY, null];
+      for (goal = 0; goal < goalsUnordered.length; goal++) {
+        var dist = Math.sqrt((boxes[box][0] - goalsUnordered[goal][0])**2
+          + (boxes[box][1] - goalsUnordered[goal][1])**2);
+        if (dist < shortest[0]) {
+          shortest[0] = dist;
+          shortest[1] = goal; // index in the goalsUnordered array
+        }
+        goals.push(goalsUnordered[shortest[1]]); // reorder corresponding to boxes
+      }
+    }
+    // now calculate number of "things" in each rectangle
+  }
+
+  var root = mctsInit(5, 5);
 
 </script>
 
