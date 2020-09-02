@@ -1,3 +1,30 @@
+<style media="screen">
+  :root {
+    --rowNum: 5;
+    --colNum: 5;
+    --maxX: 256px;
+    --maxY: 256px;
+  }
+
+  .gameWindow {
+    display: grid;
+    grid-template-rows: repeat(var(--rowNum), auto);
+    grid-template-columns: repeat(var(--colNum), auto);
+    grid-gap: 0px;
+    width: 75vmin;
+    height: 75vmin;
+    background-color: black;
+  }
+
+  .gameObject {
+    padding-right: 0px;
+    padding-left: 0px;
+    object-fit: cover;
+    width: 100%;
+    max-height: 100%;
+  }
+</style>
+
 <p>
   <strong>Name:</strong>
   <%= @puzzle.name %>
@@ -10,56 +37,70 @@
 
 <br><br>
 
-<p id="gameWindow"></p>
+<div id="gameWindow" class="gameWindow"></div>
 
 <script type="text/javascript">
 
   var gridSlot;
   var gameWindow = document.getElementById("gameWindow");
   var gameState = <%= @puzzle.game %>;
-  var gameStateStripped = JSON.parse(JSON.stringify(gameState));
+
+  document.documentElement.style.setProperty("--rowNum", gameState.length)
+  document.documentElement.style.setProperty("--colNum", gameState[0].length)
+  document.documentElement.style.setProperty("--maxX", 256*gameState[0].length)
+  document.documentElement.style.setProperty("--maxY", 256*gameState.length)
+
   var playerX = 0;
   var playerY = 0;
   var newX = 0;
   var newY = 0;
-  var valid = false;
 
-  for (i = 0; i < gameStateStripped.length; i++) {
-    for (j = 0; j < gameStateStripped[i].length; j++) {
-      if (gameStateStripped[i][j] == 0) {
-        gameStateStripped[i][j] = 4;
+  var boxPath = "<%= asset_path('box.png') %>";
+  var boxAlt = "Pushable Box";
+  var boxID = 1;
+
+  var charPath = "<%= asset_path('char.png') %>";
+  var char2Path = "<%= asset_path('char2.png') %>";
+  var charAlt = "Empty Tile With Character";
+  var charID = 2;
+
+  var obstaclePath = "<%= asset_path('obstacle.png') %>";
+  var obstacleAlt = "Immovable Obstacle";
+  var obstacleID = 9;
+
+  var freePath = "<%= asset_path('free.png') %>";
+  var freeAlt = "Empty Tile";
+  var freeID = 0;
+
+  var goalPath = "<%= asset_path('goal.png') %>";
+  var goalAlt = "Goal Tile";
+  var goalID = 3;
+
+  var goalBoxPath = "<%= asset_path('goalbox.png') %>";
+  var goalBoxAlt = "Goal Tile With Box";
+  var goalBoxID = 4;
+
+  var goalCharPath = "<%= asset_path('goalchar.png') %>";
+  var goalChar2Path = "<%= asset_path('goalchar2.png') %>";
+  var goalCharAlt = "Goal Tile With Character";
+  var goalCharID = 5;
+
+  // to add a box to a tile, add 1; to add the character, add 2
+
+  var indexPath = "<%= puzzles_path %>";
+  var facing = 0; // right, 1 is left
+  var emptyGoals = 0;
+
+  for (i = 0; i < gameState.length; i++) {
+    for (j = 0; j < gameState[i].length; j++) {
+      if (gameState[i][j] == charID) {
         playerX = j;
         newX = j;
         playerY = i;
         newY = i;
       }
-      if (gameStateStripped[i][j] == 1) {
-        gameStateStripped[i][j] = 4;
-      }
     }
   }
-
-  var boxPath = "<%= asset_path('box.png') %>";
-  var boxAlt = "Pushable Box";
-  const boxID = 1;
-
-  var charPath = "<%= asset_path('char.png') %>";
-  var charAlt = "Player Character";
-  const charID = 0;
-
-  var obstaclePath = "<%= asset_path('obstacle.png') %>";
-  var obstacleAlt = "Immovable Obstacle";
-  const obstacleID = 3;
-
-  var freePath = "<%= asset_path('free.png') %>";
-  var freeAlt = "Empty Tile";
-  const freeID = 4;
-
-  var goalPath = "<%= asset_path('goal.png') %>";
-  var goalAlt = "Goal Tile";
-  const goalID = 2;
-
-  var indexPath = "<%= puzzles_path %>";
 
 
 // update the state of graphics/board images
@@ -68,20 +109,36 @@
       gameWindow.removeChild(gameWindow.lastChild);
     }
 
-    var emptyGoals = 0;
+    emptyGoals = 0;
 
     for (i = 0; i < arr.length; i++) {
-      gridSlot = document.createElement("p");
-      document.getElementById("gameWindow").appendChild(gridSlot)
+      //gridSlot = document.createElement("p");
+      //document.getElementById("gameWindow").appendChild(gridSlot)
       for (j = 0; j < arr[i].length; j++) {
         gridSlot = document.createElement("img");
         if (arr[i][j] == charID) {
-          gridSlot.src = charPath;
-          gridSlot.alt = charAlt
+          gridSlot.alt = charAlt;
+          if (facing == 0) {
+            gridSlot.src = charPath;
+          } else {
+            gridSlot.src = char2Path;
+          }
+        }
+        if (arr[i][j] == goalCharID) {
+          gridSlot.alt = goalCharAlt;
+          if (facing == 0) {
+            gridSlot.src = goalCharPath;
+          } else {
+            gridSlot.src = goalChar2Path;
+          }
         }
         if (arr[i][j] == boxID) {
           gridSlot.src = boxPath;
           gridSlot.alt = boxAlt;
+        }
+        if (arr[i][j] == goalBoxID) {
+          gridSlot.src = goalBoxPath;
+          gridSlot.alt = goalBoxAlt;
         }
         if (arr[i][j] == obstacleID) {
           gridSlot.src = obstaclePath;
@@ -96,8 +153,9 @@
           gridSlot.alt = goalAlt;
           emptyGoals++;
         }
-        gridSlot.id = "gameGrid" + String((i + 1) * (j + 1) - 1)
-        document.getElementById("gameWindow").appendChild(gridSlot)
+        gridSlot.className = "gameObject";
+        gridSlot.id = "gameGrid" + String((i + 1) * (j + 1) - 1);
+        gameWindow.appendChild(gridSlot);
       }
     }
     if (emptyGoals == 0) {
@@ -112,10 +170,10 @@
 
 // update the internal representation of the game
   function movePlayer() {
-    gameState[playerY][playerX] = gameStateStripped[playerY][playerX];
+    gameState[playerY][playerX] -= 2;
     playerX = newX;
     playerY = newY;
-    gameState[playerY][playerX] = 0;
+    gameState[playerY][playerX] += 2;
     updateGame(gameState);
   }
 
@@ -150,6 +208,7 @@
         } else {
           newX = playerX;
         }
+        facing = 1;
         break;
       case "ArrowRight":
         if (playerX < gameState[0].length - 1) {
@@ -157,30 +216,33 @@
         } else {
           newX = playerX;
         }
+        facing = 0;
         break;
       default:
         return; // Quit when this doesn't handle the key event.
     }
 
     switch (gameState[newY][newX]) {
-      case 3:
+      case obstacleID:
         break;
-      case 4:
+      case freeID:
         movePlayer();
         break;
-      case 2:
+      case goalID:
         movePlayer();
         break;
-      case 1:
+      case boxID:
         if (
         (newX - playerX) * 2 + playerX <= gameState[0].length - 1 &&
         (newX - playerX) * 2 + playerX >= 0 &&
         (newY - playerY) * 2 + playerY <= gameState.length - 1 &&
         (newY - playerY) * 2 + playerY >= 0) {
           if (
-          gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] != 3 &&
-          gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] != 1) {
-            gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] = 1;
+          gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] != obstacleID &&
+          gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] != boxID &&
+          gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] != goalBoxID) {
+            gameState[(newY - playerY) * 2 + playerY][(newX - playerX) * 2 + playerX] += 1;
+            gameState[newY][newX] -= 1;
             movePlayer();
           }
         }
@@ -192,8 +254,6 @@
     // Cancel the default action to avoid it being handled twice
     event.preventDefault();
   }, true);
-  // the last option dispatches the event to the listener first,
-  // then dispatches event to window
 
 </script>
 
