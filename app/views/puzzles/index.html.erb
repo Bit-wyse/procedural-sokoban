@@ -31,7 +31,7 @@
     }
   }
 
-  function mctsInit(m, n) {
+  function mctsInit(m, n) { // creates root (m by n) filled with obstacles
     var state = Array.from({ length: n},
       () => Array.from({length: m}, () => obstacleID));
     state[Math.trunc(state.length / 2)][Math.trunc(state[0].length / 2)]
@@ -41,9 +41,14 @@
   }
 
   function mctsMain(root) {
-    while (true) {
-
+    var score = 0;
+    var leaf = null;
+    while (score < 0.2) {
+      leaf = mctsTrav(root)
+      score = mctsEval(leaf); // is this right?
+      mctsProp(leaf, score);
     }
+    return [leaf, score]; // still need to figure out when it freezes level
   }
 
   function mctsTrav(node) { // FIX store uct evaluation on node object for speed
@@ -67,7 +72,7 @@
     }
   }
 
-  function mctsBest(node) { // choose best child
+  function mctsBest(node) { // choose best child (num times propagated thru)
     var best = [null, 0];
     for (i = 0; i < node.children.length; i++) {
       maxer = node.children[i].n;
@@ -81,7 +86,7 @@
 
   function mctsRoll(node) { // rollout policy, NOT FULL ROLLOUT
     roll = Math.random();
-    numCh = node.children.length
+    numCh = node.children.length;
     for (i = 0; i < numCh; i++) {
       if (roll < (i + 1) / numCh) {
         return node.children[i];
@@ -101,17 +106,23 @@
 
   function mctsEval(node) { // equation 2 from paper
     var terrain = 0;
-    var congest = 0;
-    var k = 200;
+    var congestion = 0;
 
     var neighbors = [0, 0, 0, 0];
-    var a = 0;
-    var b = 0;
-    var c = 0;
+
+    // constant parameters
+    var a = 4;
+    var b = 4;
+    var c = 1;
+    var k = 200;
+
+    var boxes = [];
+    var goalsUnordered = [];
 
     for (i = 0; i < node.state.length; i++) {
       for (j = 0; j < node.state[i].length; j++) {
-        if (node.state[i][j] == emptyID || node.state[i][j] == emptyID + 1 || node.state[i][j] == emptyID + 2) {
+        if (node.state[i][j] == emptyID || node.state[i][j] == emptyID + 1 ||
+            node.state[i][j] == emptyID + 2) {
           neighbors = [j+1, i+1, j-1, i-1]; // right, up, left, down
 
           if (neighbors[0] < node.state[i].length) {
@@ -140,12 +151,51 @@
 
         }
 
+        if (node.state[i][j] == boxID) {
+          boxes.push([i, j]);
+        }
 
+        if (node.state[i][j] == goalID) {
+          goalsUnordered.push([i, j]);
+        }
 
       }
     }
 
-    return (Math.sqrt(terrain * congest)) / k;
+    var goals = [];
+    for (box = 0; box < boxes.length; box++) {
+      var shortest = [Number.POSITIVE_INFINITY, goalsUnordered[box]];
+      for (goal = 0; goal < goalsUnordered.length; goal++) {
+        var dist = Math.sqrt((boxes[box][0] - goalsUnordered[goal][0])**2
+          + (boxes[box][1] - goalsUnordered[goal][1])**2);
+        if (dist < shortest[0]) {
+          shortest[0] = dist;
+          shortest[1] = goal; // index in the goalsUnordered array
+        }
+
+      }
+      goals.push(goalsUnordered[shortest[1]]); // reorder corresponding to boxes
+      goalsUnordered.splice(shortest[1], 1);
+    }
+    for (box = 0; box < boxes.length; box++) {
+      for (i = Math.min(boxes[box][0], goals[box][0]); i <= Math.max(boxes[box][0], goals[box][0]); i++) {
+        for (j = Math.min(boxes[box][1], goals[box][1]); j <= Math.max(boxes[box][1], goals[box][1]); j++) {
+          if (node.state[i][j] == boxID) {
+            congestion += a;
+          }
+          if (node.state[i][j] == goalID) {
+            congestion += b;
+          }
+          if (node.state[i][j] == obstacleID) {
+            congestion += c;
+          }
+          console.log(box, congestion);
+        }
+      }
+    }
+    console.log(terrain);
+    console.log(congestion);
+    return (Math.sqrt(terrain * congestion)) / k;
   }
 
 
@@ -159,37 +209,10 @@
     return w * pi_s + c * Math.sqrt(Math.log(p_v)/s_v);
   }
 
-  function mctsDist(node) { // handle the congestion term
-    var boxes = [];
-    var goalsUnordered = [];
-    for (i = 0; i < node.state.length; i++) {
-      for (j = 0; j < node.state[i].length; j++) {
-        if (node.state[i][j] == boxID) {
-          boxes.push([i, j]);
-        }
-        if (node.state[i][j] == goalID) {
-          goalsUnordered.push([i, j]);
-        }
-      }
-    }
+  // Testing
+  //var root = new TNode(state=[ [9,9,9,9,9], [0,0,0,0,3], [0,1,2,0,9], [9,1,1,0,3], [3,0,1,0,3] ], root=true);
+  //console.log(mctsEval(root));
 
-    var goals = [];
-    for (box = 0; box < boxes.length; box++) {
-      var shortest = [Number.POSITIVE_INFINITY, null];
-      for (goal = 0; goal < goalsUnordered.length; goal++) {
-        var dist = Math.sqrt((boxes[box][0] - goalsUnordered[goal][0])**2
-          + (boxes[box][1] - goalsUnordered[goal][1])**2);
-        if (dist < shortest[0]) {
-          shortest[0] = dist;
-          shortest[1] = goal; // index in the goalsUnordered array
-        }
-        goals.push(goalsUnordered[shortest[1]]); // reorder corresponding to boxes
-      }
-    }
-    // now calculate number of "things" in each rectangle
-  }
-
-  var root = mctsInit(5, 5);
 
 </script>
 
